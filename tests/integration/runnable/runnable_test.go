@@ -707,45 +707,6 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 		})
 	})
 
-	Describe("when a ClusterRunTemplate that produces a Resource leverages a Selected field", func() {
-		BeforeEach(func() {
-			runTemplateYaml := HereYamlF(`
-				---
-				apiVersion: carto.run/v1alpha1
-				kind: ClusterRunTemplate
-				metadata:
-				  name: my-run-template
-				spec:
-				  template:
-					apiVersion: v1
-					kind: ResourceQuota
-					metadata:
-					  generateName: my-stamped-resource-
-					  labels:
-					    focus: something-useful
-					spec:
-					  hard:
-						cpu: "1000"
-						memory: 200Gi
-						pods: "10"
-					  scopeSelector:
-						matchExpressions:
-						- operator : In
-						  scopeName: PriorityClass
-						  values: [$(selected.spec.inputs.key)$]
-				`,
-				testNS,
-			)
-
-			runTemplateDefinition = &unstructured.Unstructured{}
-			err := yaml.Unmarshal([]byte(runTemplateYaml), runTemplateDefinition)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = c.Create(ctx, runTemplateDefinition, &client.CreateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
 	Describe("Latest stampedObject is the status", func() {
 		BeforeEach(func() {
 			runTemplateYaml := HereYamlF(`
@@ -774,33 +735,6 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 
 			err = c.Create(ctx, runTemplateDefinition, &client.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-
-			// This is in order to ensure gen 1 object and gen 2 object have different creationTimestamps
-			//time.Sleep(time.Second)
-			//
-			//Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "2")).To(Succeed())
-			//
-			//err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
-			//Expect(err).NotTo(HaveOccurred())
-			//
-			//Eventually(func() ([]resources.TestObj, error) {
-			//	err := c.List(ctx, testsList, opts...)
-			//	return testsList.Items, err
-			//}).Should(HaveLen(2))
-			//
-			//// This is in order to ensure gen 2 object and gen 3 object have different creationTimestamps
-			//// Gen 3 object is needed to demonstrate behaviour when the most recently submitted is not successful
-			//time.Sleep(time.Second)
-			//
-			//Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "3")).To(Succeed())
-			//
-			//err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
-			//Expect(err).NotTo(HaveOccurred())
-			//
-			//Eventually(func() ([]resources.TestObj, error) {
-			//	err := c.List(ctx, testsList, opts...)
-			//	return testsList.Items, err
-			//}).Should(HaveLen(3))
 		})
 
 		AfterEach(func() {
@@ -808,11 +742,11 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("populates the runnable.Status.outputs properly", func() {
-			listOpts := []client.ListOption{
-				client.InNamespace(testNS),
-				client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
-			}
+		FIt("populates the runnable.Status.outputs properly", func() {
+			//listOpts := []client.ListOption{
+			//	client.InNamespace(testNS),
+			//	client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
+			//}
 
 			By("creating the runnable", func() {
 				runnableYaml := HereYamlF(`---
@@ -840,14 +774,63 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			By("showing that the status is unknown", func() {
-				testsList := &resources.TestObjList{}
+			By("showing that the Runnable status is unknown", func() {
 
-				Eventually(func() ([]resources.TestObj, error) {
-					err := c.List(ctx, testsList, listOpts...)
-					return testsList.Items, err
-				}).Should(HaveLen(1))
+				Eventually(func() (v1alpha1.RunnableStatus, error) {
+					runnable := &v1alpha1.Runnable{}
+					err := c.Get(ctx, client.ObjectKey{Namespace: testNS, Name: "my-runnable"}, runnable)
+					return runnable.Status, err
+				}).Should(
+					MatchFields(IgnoreExtras,
+						Fields{
+							"Conditions": ContainElements(
+								MatchFields(IgnoreExtras,
+									Fields{
+										"Status": Equal(metav1.ConditionUnknown),
+										"Type":   Equal("Ready"),
+									},
+								),
+								MatchFields(IgnoreExtras,
+									Fields{
+										"Status": Equal(metav1.ConditionTrue),
+										"Type":   Equal("RunTemplateReady"),
+									},
+								),
+							),
+						},
+					),
+				)
 			})
+
+			//By("showing that the status is unknown", func() {
+			//	testsList := &resources.TestObjList{}
+			//
+			//	Eventually(func() ([]resources.TestObj, error) {
+			//		err := c.List(ctx, testsList, listOpts...)
+			//		return testsList.Items, err
+			//	}, "5s").Should(
+			//		ContainElements(
+			//			MatchFields(IgnoreExtras,
+			//				Fields{
+			//					"status": ContainElements(
+			//						MatchFields(IgnoreExtras,
+			//							Fields{
+			//								"status": Equal(metav1.ConditionUnknown),
+			//								"type":   Equal("Ready"),
+			//							},
+			//						),
+			//						MatchFields(IgnoreExtras,
+			//							Fields{
+			//								"status": Equal(metav1.ConditionTrue),
+			//								"type":   Equal("RunTemplateReady"),
+			//							},
+			//						),
+			//					),
+			//				},
+			//			),
+			//		),
+			//	)
+			//})
 
 			//By("updating runnable status based on the most recently submitted and successful object", func() {
 			//
