@@ -743,10 +743,10 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 		})
 
 		FIt("populates the runnable.Status.outputs properly", func() {
-			//listOpts := []client.ListOption{
-			//	client.InNamespace(testNS),
-			//	client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
-			//}
+			listOpts := []client.ListOption{
+				client.InNamespace(testNS),
+				client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
+			}
 
 			By("creating the runnable", func() {
 				runnableYaml := HereYamlF(`---
@@ -806,6 +806,45 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 					),
 				)
 			})
+
+			By("creating the first stamped object", func() {
+				testsList := &resources.TestObjList{}
+
+				Eventually(func() ([]resources.TestObj, error) {
+					err := c.List(ctx, testsList, listOpts...)
+					return testsList.Items, err
+				}, "5s").Should(HaveLen(1))
+			})
+			By("changing the first stamped object's status to false", func() {
+				//	ContainElements(
+				//		MatchFields(IgnoreExtras,
+				//			Fields{
+				//				"status": ContainElements(
+				//					MatchFields(IgnoreExtras,
+				//						Fields{
+				//							"status": Equal(metav1.ConditionUnknown),
+				//							"type":   Equal("Ready"),
+				//						},
+				//					),
+				//					MatchFields(IgnoreExtras,
+				//						Fields{
+				//							"status": Equal(metav1.ConditionTrue),
+				//							"type":   Equal("RunTemplateReady"),
+				//						},
+				//					),
+				//				),
+				//			},
+				//		),
+				//	),
+				//)
+
+			})
+			By("seeing that the runnable status is false", func() {})
+			By("changing the input", func() {})
+			By("seeing that there is a new stampedObject", func() {})
+			By("seeing that the runnable status is unknown", func() {})
+			By("changing the second stampedObject's status to True", func() {})
+			By("seeing that the runnable status is true", func() {})
 
 			//By("showing that the status is unknown", func() {
 			//	testsList := &resources.TestObjList{}
