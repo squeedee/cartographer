@@ -132,6 +132,7 @@ func (r *RunnableReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		log.V(logger.DEBUG).Info("realized object", "object", stampedObject)
 		r.conditionManager.AddPositive(conditions.RunTemplateReadyCondition())
 	}
+	r.conditionManager.AddPositive(conditions.StampedObjectStatusAbsentCondition())
 
 	//
 	//r.conditionManager.AddPositive(conditions.StampedObjectReady)

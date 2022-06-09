@@ -116,3 +116,13 @@ func ClientBuilderErrorCondition(err error) metav1.Condition {
 		Message: err.Error(),
 	}
 }
+
+// -- Runnable.Status.Conditions - StampedObjectReady
+
+func StampedObjectStatusAbsentCondition() metav1.Condition {
+	return metav1.Condition{
+		Type:   v1alpha1.StampedObjectReady,
+		Status: metav1.ConditionUnknown,
+		Reason: v1alpha1.AbsentStampedObjectReadyReason,
+	}
+}

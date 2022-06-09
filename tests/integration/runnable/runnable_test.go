@@ -785,20 +785,20 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 							"Conditions": ContainElements(
 								MatchFields(IgnoreExtras,
 									Fields{
-										"Status": Equal(metav1.ConditionUnknown),
 										"Type":   Equal("Ready"),
-									},
-								),
-								MatchFields(IgnoreExtras,
-									Fields{
 										"Status": Equal(metav1.ConditionUnknown),
-										"Type":   Equal("StampedObjectReady"),
 									},
 								),
 								MatchFields(IgnoreExtras,
 									Fields{
-										"Status": Equal(metav1.ConditionTrue),
+										"Type":   Equal("StampedObjectReady"),
+										"Status": Equal(metav1.ConditionUnknown),
+									},
+								),
+								MatchFields(IgnoreExtras,
+									Fields{
 										"Type":   Equal("RunTemplateReady"),
+										"Status": Equal(metav1.ConditionTrue),
 									},
 								),
 							),

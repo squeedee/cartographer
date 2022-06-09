@@ -149,8 +149,9 @@ const (
 // -- RUNNABLE ConditionTypes
 
 const (
-	RunnableReady    = "Ready"
-	RunTemplateReady = "RunTemplateReady"
+	RunnableReady      = "Ready"
+	RunTemplateReady   = "RunTemplateReady"
+	StampedObjectReady = "StampedObjectReady"
 )
 
 // -- RUNNABLE ConditionType - RunTemplateReady ConditionReasons
@@ -164,4 +165,7 @@ const (
 	FailedToListCreatedObjectsReason                  = "FailedToListCreatedObjects"
 	UnknownErrorReason                                = "UnknownError"
 	ClientBuilderErrorResourcesSubmittedReason        = "ClientBuilderError"
+	ReadyStampedObjectReadyReason                     = "Ready"
+	AbsentStampedObjectReadyReason                    = "StampedObjectStatusAbsent"
+	UnknownStampedObjectReadyReason                   = "StampedObjectStatusUnknown"
 )
