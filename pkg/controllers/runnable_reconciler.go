@@ -133,6 +133,9 @@ func (r *RunnableReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		r.conditionManager.AddPositive(conditions.RunTemplateReadyCondition())
 	}
 
+	//
+	//r.conditionManager.AddPositive(conditions.StampedObjectReady)
+
 	var trackingError error
 	if stampedObject != nil {
 		trackingError = r.StampedTracker.Watch(log, stampedObject, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.Runnable{}})

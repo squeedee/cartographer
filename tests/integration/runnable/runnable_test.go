@@ -775,7 +775,6 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 			})
 
 			By("showing that the Runnable status is unknown", func() {
-
 				Eventually(func() (v1alpha1.RunnableStatus, error) {
 					runnable := &v1alpha1.Runnable{}
 					err := c.Get(ctx, client.ObjectKey{Namespace: testNS, Name: "my-runnable"}, runnable)
@@ -788,6 +787,12 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 									Fields{
 										"Status": Equal(metav1.ConditionUnknown),
 										"Type":   Equal("Ready"),
+									},
+								),
+								MatchFields(IgnoreExtras,
+									Fields{
+										"Status": Equal(metav1.ConditionUnknown),
+										"Type":   Equal("StampedObjectReady"),
 									},
 								),
 								MatchFields(IgnoreExtras,
