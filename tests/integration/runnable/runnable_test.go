@@ -17,7 +17,6 @@ package runnable_test
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -747,32 +746,8 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 		})
 	})
 
-	Describe("Multiple objects created", func() {
+	Describe("Latest stampedObject is the status", func() {
 		BeforeEach(func() {
-			runnableYaml := HereYamlF(`---
-					apiVersion: carto.run/v1alpha1
-					kind: Runnable
-					metadata:
-					  namespace: %s
-					  name: my-runnable
-					  labels:
-					    some-val: first
-					spec:
-					  serviceAccountName: %s
-					  runTemplateRef: 
-					    name: my-run-template
-					    namespace: %s
-					    kind: ClusterRunTemplate
-					`,
-				testNS, serviceAccountName, testNS)
-
-			runnableDefinition = &unstructured.Unstructured{}
-			err := yaml.Unmarshal([]byte(runnableYaml), runnableDefinition)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = c.Create(ctx, runnableDefinition, &client.CreateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
 			runTemplateYaml := HereYamlF(`
 				---
 				apiVersion: carto.run/v1alpha1
@@ -794,132 +769,160 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 				`)
 
 			runTemplateDefinition = &unstructured.Unstructured{}
-			err = yaml.Unmarshal([]byte(runTemplateYaml), runTemplateDefinition)
+			err := yaml.Unmarshal([]byte(runTemplateYaml), runTemplateDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = c.Create(ctx, runTemplateDefinition, &client.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			opts := []client.ListOption{
-				client.InNamespace(testNS),
-				client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
-			}
-
-			testsList := &resources.TestObjList{}
-
-			Eventually(func() ([]resources.TestObj, error) {
-				err := c.List(ctx, testsList, opts...)
-				return testsList.Items, err
-			}).Should(HaveLen(1))
-
 			// This is in order to ensure gen 1 object and gen 2 object have different creationTimestamps
-			time.Sleep(time.Second)
-
-			Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "2")).To(Succeed())
-
-			err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(func() ([]resources.TestObj, error) {
-				err := c.List(ctx, testsList, opts...)
-				return testsList.Items, err
-			}).Should(HaveLen(2))
-
-			// This is in order to ensure gen 2 object and gen 3 object have different creationTimestamps
-			// Gen 3 object is needed to demonstrate behaviour when the most recently submitted is not successful
-			time.Sleep(time.Second)
-
-			Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "3")).To(Succeed())
-
-			err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(func() ([]resources.TestObj, error) {
-				err := c.List(ctx, testsList, opts...)
-				return testsList.Items, err
-			}).Should(HaveLen(3))
+			//time.Sleep(time.Second)
+			//
+			//Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "2")).To(Succeed())
+			//
+			//err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
+			//Expect(err).NotTo(HaveOccurred())
+			//
+			//Eventually(func() ([]resources.TestObj, error) {
+			//	err := c.List(ctx, testsList, opts...)
+			//	return testsList.Items, err
+			//}).Should(HaveLen(2))
+			//
+			//// This is in order to ensure gen 2 object and gen 3 object have different creationTimestamps
+			//// Gen 3 object is needed to demonstrate behaviour when the most recently submitted is not successful
+			//time.Sleep(time.Second)
+			//
+			//Expect(AlterFieldOfNestedStringMaps(runTemplateDefinition.Object, "spec.template.metadata.labels.gen", "3")).To(Succeed())
+			//
+			//err = c.Update(ctx, runTemplateDefinition, &client.UpdateOptions{})
+			//Expect(err).NotTo(HaveOccurred())
+			//
+			//Eventually(func() ([]resources.TestObj, error) {
+			//	err := c.List(ctx, testsList, opts...)
+			//	return testsList.Items, err
+			//}).Should(HaveLen(3))
 		})
 
 		AfterEach(func() {
-			err := c.Delete(ctx, runnableDefinition)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = c.Delete(ctx, runTemplateDefinition)
+			err := c.Delete(ctx, runTemplateDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("populates the runnable.Status.outputs properly", func() {
-			By("updating runnable status based on the most recently submitted and successful object")
-			opts := []client.ListOption{
+			listOpts := []client.ListOption{
 				client.InNamespace(testNS),
-				client.MatchingLabels(map[string]string{"gen": "2"}),
+				client.MatchingLabels(map[string]string{"carto.run/runnable-name": "my-runnable"}),
 			}
 
-			testsList := &resources.TestObjList{}
+			By("creating the runnable", func() {
+				runnableYaml := HereYamlF(`---
+					apiVersion: carto.run/v1alpha1
+					kind: Runnable
+					metadata:
+					  namespace: %s
+					  name: my-runnable
+					  labels:
+					    some-val: first
+					spec:
+					  serviceAccountName: %s
+					  runTemplateRef: 
+					    name: my-run-template
+					    namespace: %s
+					    kind: ClusterRunTemplate
+					`,
+					testNS, serviceAccountName, testNS)
 
-			Eventually(func() ([]resources.TestObj, error) {
-				err := c.List(ctx, testsList, opts...)
-				return testsList.Items, err
-			}).Should(HaveLen(1))
+				runnableDefinition := &unstructured.Unstructured{}
+				err := yaml.Unmarshal([]byte(runnableYaml), runnableDefinition)
+				Expect(err).NotTo(HaveOccurred())
 
-			testToUpdate := &testsList.Items[0]
-			testToUpdate.Status.Conditions = []metav1.Condition{
-				{
-					Type:               "Ready",
-					Status:             "True",
-					Reason:             "LifeIsGood",
-					LastTransitionTime: metav1.Now(),
-					Message:            "this is generation 2",
-				},
-				{
-					Type:               "Succeeded",
-					Status:             "True",
-					Reason:             "Success",
-					LastTransitionTime: metav1.Now(),
-				},
-			}
-			err := c.Status().Update(ctx, testToUpdate)
-			Expect(err).NotTo(HaveOccurred())
+				err = c.Create(ctx, runnableDefinition, &client.CreateOptions{})
+				Expect(err).NotTo(HaveOccurred())
+			})
 
-			Eventually(getRunnableTestStatus).Should(MatchFields(IgnoreExtras, Fields{
-				"Message": Equal("this is generation 2"),
-			}))
+			By("showing that the status is unknown", func() {
+				testsList := &resources.TestObjList{}
 
-			By("not updating runnable status based on the less recently submitted and successful objects")
-			opts = []client.ListOption{
-				client.InNamespace(testNS),
-				client.MatchingLabels(map[string]string{"gen": "1"}),
-			}
+				Eventually(func() ([]resources.TestObj, error) {
+					err := c.List(ctx, testsList, listOpts...)
+					return testsList.Items, err
+				}).Should(HaveLen(1))
+			})
 
-			Eventually(func() ([]resources.TestObj, error) {
-				err := c.List(ctx, testsList, opts...)
-				return testsList.Items, err
-			}).Should(HaveLen(1))
+			//By("updating runnable status based on the most recently submitted and successful object", func() {
+			//
+			//	opts := []client.ListOption{
+			//		client.InNamespace(testNS),
+			//		client.MatchingLabels(map[string]string{"gen": "2"}),
+			//	}
+			//
+			//	testsList := &resources.TestObjList{}
+			//
+			//	Eventually(func() ([]resources.TestObj, error) {
+			//		err := c.List(ctx, testsList, opts...)
+			//		return testsList.Items, err
+			//	}).Should(HaveLen(1))
+			//
+			//	testToUpdate := &testsList.Items[0]
+			//	testToUpdate.Status.Conditions = []metav1.Condition{
+			//		{
+			//			Type:               "Ready",
+			//			Status:             "True",
+			//			Reason:             "LifeIsGood",
+			//			LastTransitionTime: metav1.Now(),
+			//			Message:            "this is generation 2",
+			//		},
+			//		{
+			//			Type:               "Succeeded",
+			//			Status:             "True",
+			//			Reason:             "Success",
+			//			LastTransitionTime: metav1.Now(),
+			//		},
+			//	}
+			//	err := c.Status().Update(ctx, testToUpdate)
+			//	Expect(err).NotTo(HaveOccurred())
+			//
+			//	Eventually(getRunnableTestStatus).Should(MatchFields(IgnoreExtras, Fields{
+			//		"Message": Equal("this is generation 2"),
+			//	}))
+			//
+			//	By("not updating runnable status based on the less recently submitted and successful objects")
+			//	opts = []client.ListOption{
+			//		client.InNamespace(testNS),
+			//		client.MatchingLabels(map[string]string{"gen": "1"}),
+			//	}
+			//
+			//	Eventually(func() ([]resources.TestObj, error) {
+			//		err := c.List(ctx, testsList, opts...)
+			//		return testsList.Items, err
+			//	}).Should(HaveLen(1))
+			//
+			//	testToUpdate = &testsList.Items[0]
+			//	testToUpdate.Status.Conditions = []metav1.Condition{
+			//		{
+			//			Type:               "Ready",
+			//			Status:             "True",
+			//			Reason:             "LifeIsGood",
+			//			LastTransitionTime: metav1.Now(),
+			//			Message:            "but this is earlier generation 1",
+			//		},
+			//		{
+			//			Type:               "Succeeded",
+			//			Status:             "True",
+			//			Reason:             "Success",
+			//			LastTransitionTime: metav1.Now(),
+			//		},
+			//	}
+			//	err = c.Status().Update(ctx, testToUpdate)
+			//	Expect(err).NotTo(HaveOccurred())
+			//
+			//	Consistently(getRunnableTestStatus, "1s").Should(MatchFields(IgnoreExtras, Fields{
+			//		"Message": And(
+			//			Equal("this is generation 2"),
+			//			Not(Equal("but this is earlier generation 1"))),
+			//	}))
+			//})
 
-			testToUpdate = &testsList.Items[0]
-			testToUpdate.Status.Conditions = []metav1.Condition{
-				{
-					Type:               "Ready",
-					Status:             "True",
-					Reason:             "LifeIsGood",
-					LastTransitionTime: metav1.Now(),
-					Message:            "but this is earlier generation 1",
-				},
-				{
-					Type:               "Succeeded",
-					Status:             "True",
-					Reason:             "Success",
-					LastTransitionTime: metav1.Now(),
-				},
-			}
-			err = c.Status().Update(ctx, testToUpdate)
-			Expect(err).NotTo(HaveOccurred())
-
-			Consistently(getRunnableTestStatus, "1s").Should(MatchFields(IgnoreExtras, Fields{
-				"Message": And(
-					Equal("this is generation 2"),
-					Not(Equal("but this is earlier generation 1"))),
-			}))
 		})
 	})
 })
