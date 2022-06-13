@@ -126,3 +126,11 @@ func StampedObjectStatusAbsentCondition() metav1.Condition {
 		Reason: v1alpha1.AbsentStampedObjectReadyReason,
 	}
 }
+
+func StampedObjectStatusPresentCondition(condition *metav1.Condition) metav1.Condition {
+	return metav1.Condition{
+		Type:   v1alpha1.StampedObjectReady,
+		Status: condition.Status,
+		Reason: v1alpha1.AbsentStampedObjectReadyReason,
+	}
+}
