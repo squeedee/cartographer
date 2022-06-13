@@ -840,11 +840,17 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 
 			})
 			By("seeing that the runnable status is false", func() {})
+
 			By("changing the input", func() {})
 			By("seeing that there is a new stampedObject", func() {})
 			By("seeing that the runnable status is unknown", func() {})
+
 			By("changing the second stampedObject's status to True", func() {})
 			By("seeing that the runnable status is true", func() {})
+
+			By("changing the input", func() {})
+			By("seeing that there is a new stampedObject", func() {})
+			By("seeing that the runnable status is unknown", func() {})
 
 			//By("showing that the status is unknown", func() {
 			//	testsList := &resources.TestObjList{}
