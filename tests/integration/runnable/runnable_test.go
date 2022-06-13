@@ -807,39 +807,93 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 				)
 			})
 
+			var firstStampedObject resources.TestObj
 			By("creating the first stamped object", func() {
 				testsList := &resources.TestObjList{}
 
 				Eventually(func() ([]resources.TestObj, error) {
 					err := c.List(ctx, testsList, listOpts...)
 					return testsList.Items, err
-				}, "5s").Should(HaveLen(1))
-			})
-			By("changing the first stamped object's status to false", func() {
-				//	ContainElements(
-				//		MatchFields(IgnoreExtras,
-				//			Fields{
-				//				"status": ContainElements(
-				//					MatchFields(IgnoreExtras,
-				//						Fields{
-				//							"status": Equal(metav1.ConditionUnknown),
-				//							"type":   Equal("Ready"),
-				//						},
-				//					),
-				//					MatchFields(IgnoreExtras,
-				//						Fields{
-				//							"status": Equal(metav1.ConditionTrue),
-				//							"type":   Equal("RunTemplateReady"),
-				//						},
-				//					),
-				//				),
-				//			},
-				//		),
-				//	),
-				//)
+				}).Should(HaveLen(1))
 
+				firstStampedObject = testsList.Items[0]
 			})
+
+			By("changing the first stamped object's status to false", func() {
+				firstStampedObject.Status = resources.TestStatus{
+					ObservedGeneration: 1,
+					Conditions: []metav1.Condition{
+						{
+							Type:               "Ready",
+							Status:             "False",
+							ObservedGeneration: 1,
+							LastTransitionTime: metav1.Now(),
+							Reason:             "FirstStampFailed",
+							Message:            "not a happy first stamped object",
+						},
+					},
+				}
+
+				Eventually(func() error {
+					return c.Status().Update(ctx, &firstStampedObject)
+				}).ShouldNot(HaveOccurred())
+			})
+
 			By("seeing that the runnable status is false", func() {})
+			Eventually(func() (v1alpha1.RunnableStatus, error) {
+				runnable := &v1alpha1.Runnable{}
+				err := c.Get(ctx, client.ObjectKey{Namespace: testNS, Name: "my-runnable"}, runnable)
+				return runnable.Status, err
+			}).Should(
+				MatchFields(IgnoreExtras,
+					Fields{
+						"Conditions": ContainElements(
+							MatchFields(IgnoreExtras,
+								Fields{
+									"Type":   Equal("Ready"),
+									"Status": Equal(metav1.ConditionFalse),
+									// Todo: Test that we Copy forward?
+								},
+							),
+							MatchFields(IgnoreExtras,
+								Fields{
+									"Type":   Equal("StampedObjectReady"),
+									"Status": Equal(metav1.ConditionFalse),
+									// Todo: What details do we want to bring from the resource?
+								},
+							),
+							MatchFields(IgnoreExtras,
+								Fields{
+									"Type":   Equal("RunTemplateReady"),
+									"Status": Equal(metav1.ConditionTrue),
+								},
+							),
+						),
+					},
+				),
+			)
+
+			//	ContainElements(
+			//		MatchFields(IgnoreExtras,
+			//			Fields{
+			//				"status": ContainElements(
+			//					MatchFields(IgnoreExtras,
+			//						Fields{
+			//							"status": Equal(metav1.ConditionUnknown),
+			//							"type":   Equal("Ready"),
+			//						},
+			//					),
+			//					MatchFields(IgnoreExtras,
+			//						Fields{
+			//							"status": Equal(metav1.ConditionTrue),
+			//							"type":   Equal("RunTemplateReady"),
+			//						},
+			//					),
+			//				),
+			//			},
+			//		),
+			//	),
+			//)
 
 			By("changing the input", func() {})
 			By("seeing that there is a new stampedObject", func() {})

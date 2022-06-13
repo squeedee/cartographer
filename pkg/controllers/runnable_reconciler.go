@@ -132,10 +132,9 @@ func (r *RunnableReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		log.V(logger.DEBUG).Info("realized object", "object", stampedObject)
 		r.conditionManager.AddPositive(conditions.RunTemplateReadyCondition())
 	}
-	r.conditionManager.AddPositive(conditions.StampedObjectStatusAbsentCondition())
 
-	//
-	//r.conditionManager.AddPositive(conditions.StampedObjectReady)
+	// default to absent stampedObject
+	r.conditionManager.AddPositive(conditions.StampedObjectStatusAbsentCondition())
 
 	var trackingError error
 	if stampedObject != nil {
@@ -146,6 +145,10 @@ func (r *RunnableReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		} else {
 			log.V(logger.DEBUG).Info("added informer for object", "object", stampedObject)
 		}
+
+		//if stampedObject.getS
+		r.conditionManager.AddPositive(conditions.StampedObjectStatusAbsentCondition())
+
 	}
 
 	return r.completeReconciliation(ctx, runnable, outputs, err)
