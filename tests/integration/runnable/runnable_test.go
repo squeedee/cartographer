@@ -839,35 +839,36 @@ var _ = Describe("Stamping a resource on Runnable Creation", func() {
 				}).ShouldNot(HaveOccurred())
 			})
 
-			By("seeing that the runnable status is false", func() {})
-			Eventually(func() ([]metav1.Condition, error) {
-				runnable := &v1alpha1.Runnable{}
-				err := c.Get(ctx, client.ObjectKey{Namespace: testNS, Name: "my-runnable"}, runnable)
-				return runnable.Status.Conditions, err
-			}).Should(
-				ContainElements(
-					MatchFields(IgnoreExtras,
-						Fields{
-							"Type":   Equal("Ready"),
-							"Status": Equal(metav1.ConditionFalse),
-							// Todo: Test that we Copy forward?
-						},
+			By("seeing that the runnable status is false", func() {
+				Eventually(func() ([]metav1.Condition, error) {
+					runnable := &v1alpha1.Runnable{}
+					err := c.Get(ctx, client.ObjectKey{Namespace: testNS, Name: "my-runnable"}, runnable)
+					return runnable.Status.Conditions, err
+				}).Should(
+					ContainElements(
+						MatchFields(IgnoreExtras,
+							Fields{
+								"Type":   Equal("Ready"),
+								"Status": Equal(metav1.ConditionFalse),
+								// Todo: Test that we Copy forward?
+							},
+						),
+						MatchFields(IgnoreExtras,
+							Fields{
+								"Type":   Equal("StampedObjectReady"),
+								"Status": Equal(metav1.ConditionFalse),
+								// Todo: What details do we want to bring from the resource?
+							},
+						),
+						MatchFields(IgnoreExtras,
+							Fields{
+								"Type":   Equal("RunTemplateReady"),
+								"Status": Equal(metav1.ConditionTrue),
+							},
+						),
 					),
-					MatchFields(IgnoreExtras,
-						Fields{
-							"Type":   Equal("StampedObjectReady"),
-							"Status": Equal(metav1.ConditionFalse),
-							// Todo: What details do we want to bring from the resource?
-						},
-					),
-					MatchFields(IgnoreExtras,
-						Fields{
-							"Type":   Equal("RunTemplateReady"),
-							"Status": Equal(metav1.ConditionTrue),
-						},
-					),
-				),
-			)
+				)
+			})
 
 			//	ContainElements(
 			//		MatchFields(IgnoreExtras,
